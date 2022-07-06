@@ -1,5 +1,5 @@
 module HiQuER
 
-# Write your package code here.
+include("graph_coloring.jl")
 
 end
