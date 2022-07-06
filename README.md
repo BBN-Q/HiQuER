@@ -1,1 +1,3 @@
-# HiQuER [![Build Status](https://github.com/guilhem.ribeill@gmail.com/HiQuER.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/guilhem.ribeill@gmail.com/HiQuER.jl/actions/workflows/CI.yml?query=branch%3Amaster)
+# HiQuER 
+
+![Build Status](https://github.com/guilhem.ribeill@gmail.com/HiQuER.jl/actions/workflows/CI.yml/badge.svg)
