@@ -1,3 +1,3 @@
 # HiQuER 
 
-![Build Status](https://github.com/guilhem.ribeill@gmail.com/HiQuER.jl/actions/workflows/CI.yml/badge.svg)
+![Build Status](https://github.com/BBN-Q/HiQuER.jl/actions/workflows/CI.yml/badge.svg)
