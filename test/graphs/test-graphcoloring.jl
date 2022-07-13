@@ -1,4 +1,4 @@
-using Graphs, MetaGraphs
+using Graphs, MetaGraphs, LinearAlgebra
 
 
 @testset "Graph Coloring" begin
@@ -17,11 +17,13 @@ using Graphs, MetaGraphs
 
 	#now a random graph, including self-loops
 	M = rand(8,8)
-	graph = MetaGraph(Graph(M'*M))
- 	for e in edges(graph)
-    	HiQuER.set_color!(graph, e, 0)
-	end
+	graph = HiQuER.graph_from_matrix(M'*M)
 	HiQuER.color_graph_edges!(graph)
 	@test HiQuER.test_colors(graph)
+
+	M = rand(12,12)
+	H = Tridiagonal(M'*M)
+	Hc = HiQuER.split_by_color(H)
+	@test all(H .≈ sum(Hc))
 
 end

@@ -1,4 +1,5 @@
 using HiQuER
 using Test
 
-include("test-graphcoloring.jl")
+include("graphs/test-graphcoloring.jl")
+include("circuits/test_angles.jl")

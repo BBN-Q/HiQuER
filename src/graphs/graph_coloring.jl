@@ -25,7 +25,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 =#
 
-using LinearAlgebra
+using LinearAlgebra, SparseArrays
 using Graphs, MetaGraphs, GraphPlot
 using Colors, Random
 
@@ -85,6 +85,18 @@ function test_graph(kind=:bull)
         set_color!(cg, e, 0)
     end
     return cg
+end
+
+"""
+Build a graph from an adjacency matrix, and set colors to 0.
+"""
+function graph_from_matrix(H)
+    g = Graph(H)
+    mg = MetaGraph(g)
+    for e in edges(mg)
+        set_color!(mg, e, 0)
+    end
+    return mg
 end
 
 ##################################################
@@ -240,3 +252,35 @@ function color_graph_edges!(g)
     end
     @assert test_colors(g) "Graph coloring failed!"
 end
+
+"""
+Split a matrix by color to get one-spare subentries.
+"""
+function split_by_color(H)
+    #convert matrix to graph
+    cg = graph_from_matrix(H)
+    color_graph_edges!(cg)
+    
+    #get colors used
+    colors = Set()
+    for e in edges(cg)
+        push!(colors, color(cg, e))
+    end
+    
+    #split H by each color
+    Hc = []
+    for col in colors
+        cc = Graph()
+        add_vertices!(cc, nv(cg))
+        for e in filter_edges(cg, :color, col)
+            add_edge!(cc, src(e), dst(e))
+        end
+        Ma = adjacency_matrix(cc)
+        #set elements of adjacency matrix to 1
+        for (i,j,v) in zip(findnz(Ma)...)
+            Ma[i,j] = 1
+        end
+        push!(Hc, H .* Ma)
+    end
+    return Hc
+end 
