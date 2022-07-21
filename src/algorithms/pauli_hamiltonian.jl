@@ -389,22 +389,25 @@ function phase_gadgets(t::Tableau, θ::Vector{T}; opt=true) where T <: Number
    c = Circuit() 
 
    for row in eachrow(t.Z)
+      rz_placed = false 
+      cnots = []
       for j = 1:M-1
-         if row[j] == 1 && row[j+1] == 1
-            push!(c, CNOT[j,j+1])
+         k = findfirst(row[j+1:end] .== 1)
+         if row[j] == 1 && !isnothing(k)
+            push!(c, CNOT[j,k+j])
+            push!(cnots, (j,k+j))
          end 
-         if row[j] == 1 && row[j+1] == 0 
+         if row[j] == 1 && isnothing(k)
             push!(c, Rz(FloatAngle(-2*signs[j]*θ[j]))[j])
+            rz_placed = true
          end 
       end 
-      if row[M] == 1 
+      if row[M] == 1 && !rz_placed
          push!(c, Rz(FloatAngle(-2*signs[M]*θ[M]))[M])
       end 
       #uncompute 
-      for j = 1:M-1
-         if row[j] == 1 && row[j+1] == 1
-            push!(c, CNOT[j,j+1])
-         end 
+      for (j,k) in cnots 
+         push!(c, CNOT[j,k])
       end
 
    end 
