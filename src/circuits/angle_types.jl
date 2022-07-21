@@ -48,9 +48,9 @@ _to_latex(ang::Angle) = latexstring(_to_latex_raw(ang))
 
 Base.show(io::IO, ::MIME"application/x-latex", angle::Angle) = print(io, _to_latex(angle))
 Base.show(io::IO, ::MIME"text/latex", angle::Angle) = print(io, _to_latex(angle))
-Base.show(io::IO, angle::Angle) = print(io, string(numerator(angle.value), "π//", denominator(angle.value)))
+Base.show(io::IO, angle::Angle) = print(io, string(numerator(angle.value), "*pi/", denominator(angle.value)))
     
-Base.show(io::IO, ang::FloatAngle) = print(io, string("∠", ang.value))
+Base.show(io::IO, ang::FloatAngle) = print(io, string(ang.value))
 Base.:(==)(x::T, y::T) where T<:AbstractAngle   = x.value == y.value
 Base.:(<)(x::T, y::T)  where T<:AbstractAngle   = x.value < y.value
 Base.:(+)(x::T, y::T)  where T<:AbstractAngle   = T(x.value + y.value)

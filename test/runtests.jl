@@ -1,5 +1,8 @@
 using HiQuER
 using Test
+using QuantumClifford
 
 include("graphs/test-graphcoloring.jl")
 include("circuits/test_angles.jl")
+include("algorithms/test_pauliop.jl")
+include("io/test-qasm.jl")

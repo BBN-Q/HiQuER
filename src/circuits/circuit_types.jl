@@ -1,5 +1,5 @@
 using LaTeXStrings
-using Base.Iterators: flatten
+using Base.Iterators: flatten, reverse
 using TikzPictures
 
 mutable struct Slice
@@ -20,12 +20,25 @@ function Slice(gates)
     return s
 end
 
+function Base.show(io::IO, s::Slice)
+    str = [string(g, k)  for (k,g) in s.gates]
+    return print(io, join(str, "*"))
+end
+
 
 function Base.:(*)(A::Pair{QubitId,T1}, B::Pair{QubitId,T2}) where {T1<:AbstractGate, T2<:AbstractGate}
     return Slice([A, B])
 end
 
+function Base.:(*)(A::Pair{Int,T1}, B::Pair{Int,T2}) where {T1<:AbstractGate, T2<:AbstractGate}
+    _check_multiqb(A[2], QubitId(A[1]))
+    _check_multiqb(B[2], QubitId(B[1]))
+    return Slice([A, B])
+end
+
 Slice() = Slice(Dict{QubitId, AbstractGate}(), Set(), -1)
+
+Base.adjoint(s::Slice) = Slice(Dict(k=>v' for (k,v) in s.gates), s.qubits, s.time_idx)
 
 mutable struct Circuit
     slices::Vector{Slice}
@@ -36,13 +49,8 @@ qubits(c::Circuit) = Set(flatten([s.qubits for s in c.slices]))
 
 Circuit() = Circuit([], [])
 
-function available(s::Slice, qb_idx::QubitId; check_overlap=false)
-    if check_overlap
-        all_qb = flatten([span(k) for k in keys(s.gates)])
-        return !any(id in all_qb for id in span(qb_idx))
-    else
-        return !any(id in s.qubits for id in qb_idx)
-    end
+function available(s::Slice, qb_idx::QubitId)
+    return !any(id in s.qubits for id in qb_idx)
 end
 available(s::Slice, qb_idx::Set{Int}) = !any(id in s.qubits for id in qb_idx)
 
@@ -77,38 +85,31 @@ Base.setindex!(c::Circuit, s::Slice, i::Int) = setindex!(c.slices, s, i)
 Base.firstindex(c::Circuit) = c.slices[1]
 Base.lastindex(c::Circuit)  = c.slices[end]
 
-function remove_overlaps(c::Circuit)
-    newc = Circuit()
-    for s in c.slices
-        for (k, v) in single_gates(s)
-            push!(newc, v, k; when=:earliest, no_overlaps=true)
-        end
-        for (k, v) in controlled_gates(s)
-            push!(newc, v, k; when=:earliest, no_overlaps=true)
-        end
-    end
-    return newc
+
+function Base.push!(c::Circuit, s::Slice)
+    
+    idx = findlast(!available(sl, QubitId(s.qubits)) for sl = c.slices)
+    if idx == length(c.slices) || isnothing(idx)
+        s.time_idx = length(c.slices)+1
+        push!(c.slices, s)
+        return nothing
+    end 
+
+    s.time_idx = idx+1
+    insert!(c.slices, idx+1, s)
+    for j = idx+1:length(c.slices)
+        c.slices[idx].time_idx += 1
+    end 
+    return nothing
 end
 
-function Base.push!(c::Circuit, s::Slice; no_overlaps=false)
-    @inbounds for idx in eachindex(c.slices)
-        if available(c.slices[idx], QubitId(s.qubits), check_overlap=no_overlaps)
-            s.time_idx = idx
-            insert!(c.slices, idx, s)
-            return nothing
-        end
-    end
-    s.time_idx = length(c.slices)+1
-    push!(c.slices, s)
-    nothing
-end    
 
 function Base.push!(c::Circuit, sg::Vector)
     for x in sg
         if x isa Slice
-            push!(c, x; no_overlaps=true)
+            push!(c, x)
         else
-            push!(c, x; no_overlaps=true, when=:earliest)
+            push!(c, x; when=:earliest)
         end
     end
 end
@@ -119,16 +120,30 @@ function Circuit(sg::Vector)
     return c
 end
 
-function Base.push!(c::Circuit, g::T, qb_idx::QubitId; when=:earliest, no_overlaps=true) where T<:AbstractGate
+Base.push!(x::Circuit, y::Circuit) = push!(x, y.slices)
+
+function Base.insert!(x::Circuit, index::Integer, y::Circuit)
+    for (jj, slice) in y.slices
+        insert!(x.slices, index+jj-1, slice)
+    end 
+    nothing 
+end
+
+function Base.push!(c::Circuit, g::T, qb_idx::QubitId; when=:earliest) where T<:AbstractGate
     if when == :earliest
-        @inbounds for idx in eachindex(c.slices)
-            if available(c.slices[idx], qb_idx, check_overlap=no_overlaps)
-                push!(c.slices[idx], g, qb_idx)
-                return nothing
-            end
-        end
-        push!(c.slices, Slice(Dict{QubitId, AbstractGate}(qb_idx=>g)))
-        c.slices[end].time_idx = length(c.slices)
+        
+        idx = findlast(!available(sl, qb_idx) for sl = c.slices)
+
+        #the last slice has a gate on this wire
+        if idx == length(c.slices) || isnothing(idx)
+            push!(c.slices, Slice(Dict{QubitId, AbstractGate}(qb_idx=>g)))
+            c.slices[end].time_idx = length(c.slices)
+            return nothing
+        end 
+
+        #otherwise put the gate in the first available slot
+        push!(c.slices[idx+1], g, qb_idx)
+        nothing
     end
     
     if when == :last
@@ -137,11 +152,30 @@ function Base.push!(c::Circuit, g::T, qb_idx::QubitId; when=:earliest, no_overla
     end
 end
 
-function Base.push!(c::Circuit, g::T, qb_idx::Int; when=:earliest, no_overlaps=false) where T<:AbstractGate 
-    push!(c, g, QubitId(qb_idx); when=when, no_overlaps=no_overlaps)
+function Base.push!(c::Circuit, g::T, qb_idx::Int; when=:earliest) where T<:AbstractGate 
+    push!(c, g, QubitId(qb_idx); when=when)
     nothing
 end
 
-function Base.push!(c::Circuit, g::Pair{QubitId,T}; when=:earliest, no_overlaps=false) where {T<:AbstractGate}
-    push!(c, g[2], g[1]; when=when, no_overlaps=no_overlaps)
+function Base.push!(c::Circuit, g::Pair{QubitId,T}; when=:earliest) where {T<:AbstractGate}
+    push!(c, g[2], g[1]; when=when)
 end
+
+function Base.push!(c::Circuit, g::Pair{Int,T}; when=:earliest) where {T<:AbstractGate}
+    push!(c, g[2], g[1]; when=when)
+end
+
+function Base.adjoint(c::Circuit)
+    cdg = Circuit()
+    for idx in length(c.slices):-1:1
+        push!(cdg, c.slices[idx]')
+    end
+    return cdg
+end
+
+function Base.show(io::IO, c::Circuit)
+    return print(io, join([string(s) for s in c.slices], "\n"))
+end
+
+export Circuit
+export Slice

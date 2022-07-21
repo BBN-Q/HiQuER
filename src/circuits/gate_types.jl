@@ -1,63 +1,7 @@
+using QuantumClifford
 using LaTeXStrings
 
 abstract type AbstractGate end
-
-struct Pauli
-    name::Symbol
-    prod::ComplexF64
-end
-
-const X = Pauli(:X, 1.0)
-const Y = Pauli(:Y, 1.0)
-const Z = Pauli(:Z, 1.0)
-const Id = Pauli(:I, 1.0)
-
-function Base.:*(a::Pauli, b::Pauli)
-    if (a.name == :X) && (b.name == :Y)
-        return Pauli(:Z, 1im*a.prod*b.prod)
-    elseif (a.name == :Y) && (b.name == :X)
-        return Pauli(:Z, -1im*a.prod*b.prod)
-    elseif (a.name == :Y) && (b.name == :Z)
-        return Pauli(:X, 1im*a.prod*b.prod)
-    elseif (a.name == :Z) && (b.name == :Y)
-        return Pauli(:X, -1im*a.prod*b.prod)
-    elseif (a.name == :Z) && (b.name == :X)
-        return Pauli(:Y,1im*a.prod*b.prod)
-    elseif (a.name == :X) && (b.name == :Z)
-        return Pauli(:Y, -1im*a.prod*b.prod)
-    elseif (a.name == :X) && (b.name == :X)
-        return Pauli(:I, a.prod*b.prod)
-    elseif (a.name == :Y) && (b.name == :Y)
-        return Pauli(:I, a.prod*b.prod)
-    elseif (a.name == :Z) && (b.name == :Z)
-        return Pauli(:I, a.prod*b.prod)
-    else
-        println("????")
-    end
-end
-
-Base.adjoint(a::Pauli) = Pauli(a.name, conj(a.prod))
-
-Base.:*(a::Pauli, b::T) where T<:Number = Pauli(a.name, a.prod*b)
-Base.:*(b::T, a::Pauli) where T<:Number = Pauli(a.name, a.prod*b)
-
-function Base.:+(a::Pauli, b::Pauli)
-    if a.name == b.name
-        return Pauli(a.name, a.prod+b.prod)
-    end
-end
-
-function Base.:-(a::Pauli, b::Pauli)
-    if a.name == b.name
-        return Pauli(a.name, a.prod-b.prod)
-    end
-end
-
-comm(a::Pauli, b::Pauli) = a*b - b*a
-anticomm(a::Pauli, b::Pauli) = a*b + b*a
-Base.iszero(x::Pauli) = iszero(x.prod)
-
-commute(A::Pauli, B::Pauli) = iszero(comm(A,B))
 
 
 struct QubitId
@@ -75,17 +19,37 @@ Base.length(Q::QubitId) = length(Q.id)
 QubitId(x::Int...) = QubitId(x)
 QubitId(x::Set{Int}) = QubitId(x...)
 
+function Base.show(io::IO, Q::QubitId) 
+    if is_single(Q)
+        return print(io, string("(", Q.id[1], ")"))
+    else
+        return print(io, string(Q.id))
+    end 
+end
+
 target(id::QubitId) = id.id[end]
 controls(id::QubitId) = id.id[1:end-1]
 is_single(id::QubitId) = length(id.id) == 1
 span(id::QubitId) = is_single(id) ? id[1] : minimum(id):maximum(id)
 
+struct Gate <: AbstractGate
+    name::Symbol
+    dag::Bool
+    self_adjoint::Bool
+end
+
+Gate(name::Symbol) = Gate(name, false, false)
+
+const H = Gate(:H, false, true)
+
+Base.adjoint(g::Gate) = Gate(g.name, g.self_adjoint ? g.dag : !g.dag, g.self_adjoint)
+
 struct PauliGate{T<:AbstractAngle} <: AbstractGate
-    pauli::Pauli
+    pauli::PauliOperator
     angle::T
 end
 
-Base.adjoint(g::PauliGate) = PauliGate(adjoint(g.pauli), -1.0*g.angle)
+Base.adjoint(g::PauliGate) = PauliGate(g.pauli, -1.0*g.angle)
 
 const S = PauliGate(Z, Angle(1//4))
 const T = PauliGate(Z, Angle(1//8))    
@@ -94,33 +58,65 @@ Rz(θ::T) where T<:AbstractAngle = PauliGate(Z, θ)
 Rx(θ::T) where T<:AbstractAngle = PauliGate(X, θ)
 Ry(θ::T) where T<:AbstractAngle = PauliGate(Y, θ)
 
+const X180 = Rx(Angle(1))
+const Y180 = Ry(Angle(1))
+const Z180 = Rz(Angle(1))
 
-function _to_latex_raw(p::Pauli)
-    return string("\\gate{", p.name, "}")
+const X90 = Rx(Angle(1//2))
+const Y90 = Ry(Angle(1//2))
+const Z90 = Rz(Angle(1//2))
+
+function Base.show(io::IO, g::Gate)
+    return print(io, string(g.name, g.dag ? "†" : ""))
 end
 
-function _to_latex_raw(g::PauliGate; st=true)
-    if st && g == S
+function Base.show(io::IO, g::PauliGate)
+    g == T  && return print(io, "T")
+    g == T' && return print(io, "T†")
+    g == S  && return print(io, "S")
+    g == S' && return print(io, "S†")
+    g == X180  && return print(io, "X")
+    g == Y180  && return print(io, "Y")
+    g == Z180  && return print(io, "Z")
+
+    g.pauli == X && return print(io, string("Rx(", string(g.angle), ")"))
+    g.pauli == Y && return print(io, string("Ry(", string(g.angle), ")"))
+    g.pauli == Z && return print(io, string("Rz(", string(g.angle), ")"))
+end
+
+
+const _pauli_name = Dict(P"Z" => "Z", P"X" => "X", P"Y" => "Y", P"I" => "I")
+
+function _to_latex_raw(g::PauliGate)
+    if g == S
         return "\\gate{S}"
     end
-    if st && g == T
+    if g == T
         return "\\gate{T}"
     end
-    return string("\\gate{", g.pauli.name, _to_latex_raw(g.angle), "}")
+    return string("\\gate{", _pauli_name[g.pauli], _to_latex_raw(g.angle), "}")
 end
 
 struct ControlledGate <: AbstractGate
-    ctrl_pauli::Vector{Pauli}
-    tgt_pauli::Pauli
+    ctrl_pauli::Vector{PauliOperator}
+    tgt_pauli::PauliOperator
 end
 
-ControlledGate(ctrl::Pauli, tgt::Pauli) where T<:AbstractAngle = ControlledGate([ctrl], tgt)
+ControlledGate(ctrl::PauliOperator, tgt::PauliOperator) where T<:AbstractAngle = ControlledGate([ctrl], tgt)
+
+##TODO:FIXME! 
+##Only true for CNOT...
+Base.adjoint(cg::ControlledGate) = cg
 
 const CNOT = ControlledGate(Z, X)
 const XZ   = ControlledGate(X, Z)
 
+function Base.show(io::IO, g::ControlledGate)
+    g == CNOT && return print(io, "CNOT")
+end
+
 struct PauliMultiGate{T <: AbstractAngle} <:AbstractGate
-    paulis::Vector{Pauli}
+    paulis::Vector{PauliOperator}
     angle::T
 end
 
@@ -136,9 +132,12 @@ end
         
     
 struct Measure <: AbstractGate
-    pauli::Pauli
+    pauli::PauliOperator
 end
 
 Measure() = Measure(Z)
 
 Base.getindex(A::G, i::Int...) where G<:AbstractGate = QubitId(i)=>A
+
+export Gate, PauliGate, ControlledGate, Measure 
+export H, T, S, Rx, Rz, Ry, X180, Y180, Z180, X90, Y90, Z90, CNOT
