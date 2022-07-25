@@ -78,7 +78,7 @@ function mat_to_paulis(A)
    @assert n ≈ log2(N) "Matrix dimension must be a power of 2!"
    d = Dict{PauliOperator, Float64}()
    for p in enumerate_paulis(n)
-      h = real(0.25*tr(complex(p)*A))
+      h = real((1.0/M)*tr(complex(p)*A))
       if !(h ≈ 0)
          d[p] = h
       end 
