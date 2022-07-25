@@ -88,12 +88,14 @@ Base.lastindex(c::Circuit)  = c.slices[end]
 
 function Base.push!(c::Circuit, s::Slice)
     
-    idx = findlast(!available(sl, QubitId(s.qubits)) for sl = c.slices)
-    if idx == length(c.slices) || isnothing(idx)
+    idx = findfirst(!available(sl, QubitId(s.qubits)) for sl in c.slices[end:-1:1])
+    if idx == 1 || isnothing(idx)
         s.time_idx = length(c.slices)+1
         push!(c.slices, s)
         return nothing
     end 
+
+    idx = length(c.slices) - idx + 1
 
     s.time_idx = idx+1
     insert!(c.slices, idx+1, s)
@@ -132,17 +134,22 @@ end
 function Base.push!(c::Circuit, g::T, qb_idx::QubitId; when=:earliest) where T<:AbstractGate
     if when == :earliest
         
-        idx = findlast(!available(sl, qb_idx) for sl = c.slices)
+        idx = findfirst(!available(sl, qb_idx) for sl in c.slices[end:-1:1])
 
         #the last slice has a gate on this wire
-        if idx == length(c.slices) || isnothing(idx)
+        if idx == 1 || length(c.slices) == 0 
             push!(c.slices, Slice(Dict{QubitId, AbstractGate}(qb_idx=>g)))
             c.slices[end].time_idx = length(c.slices)
             return nothing
         end 
 
+        if isnothing(idx)
+            push!(c.slices[1], g, qb_idx)
+            return nothing
+        end
+
         #otherwise put the gate in the first available slot
-        push!(c.slices[idx+1], g, qb_idx)
+        push!(c.slices[end-idx-1], g, qb_idx)
         nothing
     end
     
@@ -174,7 +181,7 @@ function Base.adjoint(c::Circuit)
 end
 
 function Base.show(io::IO, c::Circuit)
-    return print(io, join([string(s) for s in c.slices], "\n"))
+    return print(io, join([string(s.time_idx, ": ", s) for s in c.slices], "\n"))
 end
 
 export Circuit
