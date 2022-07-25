@@ -48,15 +48,21 @@ _to_latex(ang::Angle) = latexstring(_to_latex_raw(ang))
 
 Base.show(io::IO, ::MIME"application/x-latex", angle::Angle) = print(io, _to_latex(angle))
 Base.show(io::IO, ::MIME"text/latex", angle::Angle) = print(io, _to_latex(angle))
-Base.show(io::IO, angle::Angle) = print(io, string(numerator(angle.value), "*pi/", denominator(angle.value)))
+Base.show(io::IO, angle::Angle) = print(io, string(numerator(angle.value) == 1 ? "" : numerator(angle.value), 
+                                                    "π/", denominator(angle.value)))
     
-Base.show(io::IO, ang::FloatAngle) = print(io, string(ang.value))
-Base.:(==)(x::T, y::T) where T<:AbstractAngle   = x.value == y.value
-Base.:(<)(x::T, y::T)  where T<:AbstractAngle   = x.value < y.value
-Base.:(+)(x::T, y::T)  where T<:AbstractAngle   = T(x.value + y.value)
-Base.:(-)(x::T, y::T)  where T<:AbstractAngle   = T(x.value - y.value)
+Base.show(io::IO, ang::FloatAngle) = print(io, string(ang.value, "π"))
 
-Base.:(*)(x::Float64, y::T) where T<:AbstractAngle = T(x*y.value)
-Base.:(*)(y::T, x::Float64) where T<:AbstractAngle = T(x*y.value)
+Base.convert(::Type{FloatAngle}, x::Angle) = FloatAngle(Float64(x.value))
+Base.promote_rule(::Type{FloatAngle}, ::Type{angle}) = FloatAngle
+
+Base.:(==)(x::T, y::R) where {T<:AbstractAngle, R<:AbstractAngle}  = x.value == y.value
+Base.:(≈)(x::T, y::R)  where {T<:AbstractAngle, R<:AbstractAngle}  = x.value ≈ y.value
+Base.:(<)(x::T, y::R)  where {T<:AbstractAngle, R<:AbstractAngle}    = x.value < y.value
+Base.:(+)(x::T, y::R)  where {T<:AbstractAngle, R<:AbstractAngle}    = T(x.value + y.value)
+Base.:(-)(x::T, y::R)  where {T<:AbstractAngle, R<:AbstractAngle}   = T(x.value - y.value)
+
+Base.:(*)(x::Number, y::T) where T<:AbstractAngle = T(x*y.value)
+Base.:(*)(y::T, x::Number) where T<:AbstractAngle = T(x*y.value)
 
 export Angle, FloatAngle
