@@ -47,7 +47,7 @@ function cplot(g::T; layout=spring_layout) where T <: MetaGraph
         push!(edgec, c == 0 ? black : cols[c])
     end
     
-    gplot(cg, layout=layout, nodelabel=nodes, linetype="curve",
+    gplot(g, layout=layout, nodelabel=nodes, linetype="curve",
     	  edgestrokec=edgec, nodefillc=colorant"lightgray")
 end
 
