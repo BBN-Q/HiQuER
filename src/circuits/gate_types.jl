@@ -1,3 +1,19 @@
+#=
+Copyright 2022 Raytheon BBN
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+
+You may obtain a copy of the License at
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+=#
+
 using QuantumClifford
 using LaTeXStrings
 
@@ -137,7 +153,9 @@ end
 
 Measure() = Measure(Z)
 
+const MEAS = Measure(Z)
+
 Base.getindex(A::G, i::Int...) where G<:AbstractGate = QubitId(i)=>A
 
 export Gate, PauliGate, ControlledGate, Measure 
-export H, T, S, Rx, Rz, Ry, X180, Y180, Z180, X90, Y90, Z90, CNOT
+export H, T, S, Rx, Rz, Ry, X180, Y180, Z180, X90, Y90, Z90, CNOT, MEAS

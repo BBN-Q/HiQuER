@@ -16,7 +16,6 @@ limitations under the License.
 
 using LaTeXStrings
 using Base.Iterators: flatten
-using TikzPictures
 
 ####################################################################################################
 # Circuits

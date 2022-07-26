@@ -8,6 +8,7 @@ include("circuits/circuit_types.jl")
 
 include("io/qasm_util.jl")
 include("io/qasm_circuit.jl")
+include("io/circuit_viz.jl")
 
 include("algorithms/pauli_hamiltonian.jl")
 
