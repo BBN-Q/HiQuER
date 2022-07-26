@@ -1,6 +1,26 @@
+#=
+Copyright 2022 Raytheon BBN
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+
+You may obtain a copy of the License at
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+=#
+
 using LaTeXStrings
-using Base.Iterators: flatten, reverse
+using Base.Iterators: flatten
 using TikzPictures
+
+####################################################################################################
+# Circuits
+#
 
 mutable struct Slice
     gates::Dict{QubitId, T} where {T<:AbstractGate}
@@ -19,6 +39,13 @@ function Slice(gates)
     end
     return s
 end
+
+function Slice(p::Pair{QubitId, T}) where T <: AbstractGate 
+    s = Slice()
+    push!(s, p)
+    return s 
+end
+
 
 function Base.show(io::IO, s::Slice)
     str = [string(g, k)  for (k,g) in s.gates]
@@ -39,6 +66,17 @@ end
 Slice() = Slice(Dict{QubitId, AbstractGate}(), Set(), -1)
 
 Base.adjoint(s::Slice) = Slice(Dict(k=>v' for (k,v) in s.gates), s.qubits, s.time_idx)
+
+#For equality, we don't compare the time index 
+function Base.:(==)(x::Slice, y::Slice)
+    return x.gates == y.gates && x.qubits == y.qubits 
+end
+
+
+
+####################################################################################################
+# Circuits
+#
 
 mutable struct Circuit
     slices::Vector{Slice}
@@ -134,7 +172,7 @@ end
 function Base.push!(c::Circuit, g::T, qb_idx::QubitId; when=:earliest) where T<:AbstractGate
     if when == :earliest
         
-        idx = findfirst(!available(sl, qb_idx) for sl in c.slices[end:-1:1])
+        idx = findfirst(!available(sl, qb_idx) for sl in reverse(c.slices))
 
         #the last slice has a gate on this wire
         if idx == 1 || length(c.slices) == 0 
@@ -149,7 +187,7 @@ function Base.push!(c::Circuit, g::T, qb_idx::QubitId; when=:earliest) where T<:
         end
 
         #otherwise put the gate in the first available slot
-        push!(c.slices[end-idx-1], g, qb_idx)
+        push!(c.slices[end-idx+2], g, qb_idx)
         nothing
     end
     
