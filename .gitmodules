@@ -1,0 +1,3 @@
+[submodule "src/include/qpp"]
+	path = src/include/qpp
+	url = https://github.com/softwareQinc/qpp.git
