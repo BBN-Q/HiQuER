@@ -26,7 +26,7 @@ struct ParseError <: Exception; end
 
 struct QASMComment
     string::String
-    function Comment(s::String)
+    function QASMComment(s::String)
         regex = r"^\/\/([^\n\r]*)$"
         m = match(regex, s)
         if isnothing(m)
@@ -181,6 +181,7 @@ function QASMListing(fs::Vector{String})
     gates    = Vector{QASMGate}()
     
     for str in fs  
+        println(str)
         if !isnothing(extras(str))
             continue
         elseif !isnothing(local qr = QASMRegister(str))

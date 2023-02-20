@@ -63,7 +63,7 @@ Enumerate all n-qubit Pauli operators.
 """
 function enumerate_paulis(n)
    pgroup = [P"I", P"X", P"Y", P"Z"]
-   return (reduce(⊗, x) for x in product(repeat([pgroup], n)...))
+   return (reduce(QuantumClifford.:(⊗), x) for x in product(repeat([pgroup], n)...))
 end
 
 """
@@ -105,7 +105,10 @@ function greedy_partition(d::Dict{T, Float64}) where T<:PauliOperator
             push!(sets, [pauli])
         end
     end
-    return sets
+
+    set_dict = Dict{Vector{T}, Vector{Float64}}([s=>[d[x] for x in s] for s in sets])
+
+    return set_dict
 end    
 
 ################################################################################################
@@ -308,6 +311,10 @@ function diagX!(t::Tableau, tg::Tableau, c::Circuit)
     end
     for i = 1:k
         for j=k:n
+            if (i > m) || (j > n)
+                continue 
+            end
+
             if t.X[i,j] == 1
                 cnot!(t, i, j)
                 cnot!(tg, i, j)
@@ -372,47 +379,108 @@ end
 
 partition!(M) = partition!(M, 1, 1:size(M,2), false)
 
-function phase_gadgets(t::Tableau, θ::Vector{T}; opt=true) where T <: Number
+function phase_gadgets(t::Tableau, θ::Vector{T}; opt=true, opt_cnots=true) where T <: Number
    (N,M) = size(t.Z)
 
    @assert length(θ) == N "Must have as many angles as Pauli strings."
-
+   
+   
    if opt 
-      K = copy([t.Z t.s])' #is the copy needed?? 
+      K = deepcopy([t.Z t.s 1:N])' #is the copy needed?? 
       partition!(K)
-      t.Z = K'[:, 1:end-1]
-      t.s = K'[:, end]
+      t.Z = K'[:, 1:end-2]
+      t.s = K'[:, end-1]
+      θ = θ[K'[:,end]]
    end 
 
    signs = [s == 0 ? 1.0 : -1.0 for s in t.s]
 
    c = Circuit() 
 
-   for row in eachrow(t.Z)
-      rz_placed = false 
+   for (jdx, row) in enumerate(eachrow(t.Z))
+      if iszero(row)
+        continue
+      end
+      rz_placed = false
       cnots = []
       for j = 1:M-1
          k = findfirst(row[j+1:end] .== 1)
          if row[j] == 1 && !isnothing(k)
+            push!(cnots, (j, k+j))
             push!(c, CNOT[j,k+j])
-            push!(cnots, (j,k+j))
          end 
          if row[j] == 1 && isnothing(k)
-            push!(c, Rz(FloatAngle(-2*signs[j]*θ[j]))[j])
+            push!(c, Rz(FloatAngle(2*signs[jdx]*θ[jdx]))[j])
             rz_placed = true
          end 
       end 
       if row[M] == 1 && !rz_placed
-         push!(c, Rz(FloatAngle(-2*signs[M]*θ[M]))[M])
+         push!(c, Rz(FloatAngle(2*signs[jdx]*θ[jdx]))[M])
       end 
       #uncompute 
-      for (j,k) in cnots 
+      for (j,k) in reverse(cnots) 
          push!(c, CNOT[j,k])
       end
 
    end 
+
+   # FIXME: Messes up slice time indexing
+
+   if opt_cnots 
+        empties = []
+        for idx in 1:length(c.slices)-1 
+            k1 = [id.id for id in keys(controlled_gates(c.slices[idx]))]
+            k2 = [id.id for id in keys(controlled_gates(c.slices[idx+1]))]
+            matches = [QubitId(id1) for (id1, id2) in zip(sort(k1), sort(k2)) if id1 == id2 ]
+            for m in matches 
+                pop!(c.slices[idx].gates, m)
+                pop!(c.slices[idx+1].gates, m)
+            end
+            if isempty(c.slices[idx].gates)
+                push!(empties, idx)
+            end
+        end
+        deleteat!(c.slices, empties)
+        
+    end
+
    return c 
 end
+
+function to_circuit(pauli_dict; opt=true, split=false)
+    diag_circs = []
+    z_circs = []
+
+    idx = 1
+
+    for (paulis, angles) in pauli_dict
+        #println(paulis)
+        push!(diag_circs, Circuit())
+        tt = Tableau(Stabilizer([p for p in paulis])) #not sure why we need the list comprehension here?
+        tg = copy(tt)
+        
+        diagX!(tt, tg, diag_circs[idx])
+        clearX!(tt, tg, diag_circs[idx])
+        
+        push!(z_circs, phase_gadgets(tg, angles, opt=opt, opt_cnots=true))
+        idx += 1
+    end 
+
+    if split
+        return (diag_circs, z_circs)
+    else 
+        final = Circuit()
+        for (d,z) in zip(diag_circs, z_circs)
+            push!(final, d)
+            push!(final, z)
+            push!(final, d')
+        end 
+        return final 
+    end
+
+end
+
+
 
 
 
@@ -424,3 +492,4 @@ export enumerate_paulis
 export greedy_partition 
 export mat_to_paulis 
 export partition! 
+export to_circuit

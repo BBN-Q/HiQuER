@@ -45,6 +45,7 @@ function Slice(p::Pair{QubitId, T}) where T <: AbstractGate
     return s 
 end
 
+Base.copy(s::Slice) = Slice(s.gates, s.qubits, s.time_idx)
 
 function Base.show(io::IO, s::Slice)
     str = [string(g, k)  for (k,g) in s.gates]
@@ -162,10 +163,20 @@ end
 Base.push!(x::Circuit, y::Circuit) = push!(x, y.slices)
 
 function Base.insert!(x::Circuit, index::Integer, y::Circuit)
-    for (jj, slice) in y.slices
+    for (jj, slice) in enumerate(y.slices)
         insert!(x.slices, index+jj-1, slice)
     end 
     nothing 
+end
+
+function Base.replace!(x::Circuit, index::Integer, y::Circuit)
+    deleteat!(x.slices, index)
+    for (jj, slice) in enumerate(y.slices)
+        newslice = copy(slice)
+        newslice.time_idx = index+jj-1
+        insert!(x.slices, index+jj-1, newslice)
+    end 
+    nothing
 end
 
 function Base.push!(c::Circuit, g::T, qb_idx::QubitId; when=:earliest) where T<:AbstractGate
@@ -221,5 +232,13 @@ function Base.show(io::IO, c::Circuit)
     return print(io, join([string(s.time_idx, ": ", s) for s in c.slices], "\n"))
 end
 
+function renumber_slices!(c::Circuit)
+    for (idx, sl) in enumerate(c.slices)
+        sl.time_idx = idx 
+    end 
+    nothing 
+end
+
 export Circuit
 export Slice
+export renumber_slices!

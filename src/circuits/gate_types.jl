@@ -65,6 +65,9 @@ struct PauliGate{T<:AbstractAngle} <: AbstractGate
     angle::T
 end
 
+PauliGate(pauli::PauliOperator, θ::Rational) = PauliGate(pauli, Angle(θ))
+PauliGate(pauli::PauliOperator, θ::AbstractFloat) = PauliGate(pauli, FloatAngle(θ))
+
 Base.adjoint(g::PauliGate) = PauliGate(g.pauli, -1.0*g.angle)
 
 const S = PauliGate(Z, Angle(1//4))

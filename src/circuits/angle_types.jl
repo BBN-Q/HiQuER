@@ -37,11 +37,15 @@ function _to_latex_raw(ang::Angle)
         numstr = string(n)
     end
     if isone(abs(d))
-        out = string(numstr, "\\pi")
+        out = string(numstr, "pi")
     else
-        out = string("\\frac{", numstr, "\\pi}{", d, "}")
+        out = string("\\frac{", numstr, "pi}{", d, "}")
     end
     return out
+end
+
+function _to_latex_raw(ang::FloatAngle)
+    return string(round(ang.value, digits=3), "pi")
 end
 
 _to_latex(ang::Angle) = latexstring(_to_latex_raw(ang))
@@ -51,7 +55,7 @@ Base.show(io::IO, ::MIME"text/latex", angle::Angle) = print(io, _to_latex(angle)
 Base.show(io::IO, angle::Angle) = print(io, string(numerator(angle.value) == 1 ? "" : numerator(angle.value), 
                                                     "π/", denominator(angle.value)))
     
-Base.show(io::IO, ang::FloatAngle) = print(io, string(ang.value, "π"))
+Base.show(io::IO, ang::FloatAngle) = print(io, string(ang.value))
 
 Base.convert(::Type{FloatAngle}, x::Angle) = FloatAngle(Float64(x.value))
 Base.promote_rule(::Type{FloatAngle}, ::Type{angle}) = FloatAngle

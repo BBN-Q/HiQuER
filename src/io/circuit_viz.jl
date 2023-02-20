@@ -34,7 +34,7 @@ function gate_to_tikz(g::Gate)
 end
 
 function gate_to_tikz(g::PauliGate)
-	return x -> Uqtz(string(_pauli_name[g.pauli], _to_latex_raw(g.angle)), x)
+	return x -> Uqtz(string(_pauli_name[g.pauli],"(", _to_latex_raw(g.angle), ")"), x)
 end 
 
 function gate_to_tikz(g::ControlledGate)
@@ -55,6 +55,9 @@ function to_qtikz(c::Circuit)
 	qtc = [] 
 
 	for sl in c.slices 
+		if isempty(sl.gates)
+			continue 
+		end
 		for qb in setdiff(qbs, sl.qubits)
 			push!(qtc, Idqtz(qb))
 		end 
@@ -72,7 +75,7 @@ draw(c::Circuit) = displaycircuit(to_qtikz(c))
 
 function save(c::Circuit, filename::AbstractString)
 	qtc = to_qtikz(c)
-	savecircuit(qtc)
+	savecircuit(qtc, filename)
 end
 
 export draw, save, to_tex
