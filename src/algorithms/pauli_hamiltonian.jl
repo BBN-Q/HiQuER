@@ -41,6 +41,7 @@ References:
 using QuantumClifford
 using Base.Iterators: product
 using Combinatorics, SparseArrays
+using JSON
 
 ################################################################################################
 # Pauli Operator Convenience Functions
@@ -110,6 +111,73 @@ function greedy_partition(d::Dict{T, Float64}) where T<:PauliOperator
 
     return set_dict
 end    
+
+"""
+Save a Pauli dictionary to a JSON object with a textual representation. Each Pauli operator is represented as a string
+of the form P(a)*P(b)*P(c)... where P is in the set {X, Y, Z}
+"""
+function save_paulis(filename::AbstractString, d)
+    json_dict = Dict()
+    N = length(first(keys(pdict)))
+    json_dict["N_qubits"] = N
+    for (p, val) in d 
+        pauli_ops = []
+        for (idx, (xx, zz)) in enumerate(zip(xbit(p), zbit(p)))
+            if xx && !(zz)
+                push!(pauli_ops, "X($(idx))")
+            end
+            if zz && !(xx)
+                push!(pauli_ops, "Z($(idx))")
+            end
+            if zz && xx
+                push!(pauli_ops, "Y($(idx))")
+            end
+        end
+        json_dict[join(pauli_ops, "*")] = val
+    end 
+    open(filename, "w") do f 
+        JSON.print(f, json_dict, 4)
+    end 
+end
+
+"""
+Load a Pauli dictionary from a JSON object with a textual representation. Each Pauli operator is represented as a string
+of the form P(a)*P(b)*P(c)... where P is in the set {X, Y, Z}
+"""
+function load_paulis(filename::AbstractString)
+    json = Dict()
+    open(filename, "r") do f
+        json = JSON.parse(f)
+    end
+    Nq = json["N_qubits"]
+    pdict = Dict{PauliOperator, Float64}()
+    for (pstr, val) in json 
+        if pstr == "N_qubits"
+            continue 
+        end 
+        println(pstr, val)
+        xvec = zeros(Bool, Nq)
+        zvec = zeros(Bool, Nq)
+        for ss in split(pstr, '*')
+            m = match(r"([XYZ])\((\d+)\)", ss)
+            if m == nothing 
+                continue 
+            else 
+                idx = parse(Int, m.captures[2])
+                if m.captures[1] == "X"
+                    xvec[idx] = true
+                elseif m.captures[1] == "Z"
+                    zvec[idx] = true
+                elseif m.captures[1] == "Y"
+                    zvec[idx] = true 
+                    xvec[idx] = true 
+                end 
+            end 
+        end 
+        pdict[PauliOperator(0x0, xvec, zvec)] = val 
+    end 
+    return pdict 
+end
 
 ################################################################################################
 # Tableau Representations

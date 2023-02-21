@@ -15,5 +15,8 @@ include("io/qasm_circuit.jl")
 include("io/circuit_viz.jl")
 
 include("algorithms/pauli_hamiltonian.jl")
+include("algorithms/trotterize.jl")
+
+include("applications/fermihubbard.jl")
 
 end
