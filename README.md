@@ -9,3 +9,5 @@ Software for estimating quantum resources.
 This material is based upon work supported by the Defense Advanced Research Projects Agency under Contract No. HR001122C0101. Any opinions, findings and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the Defense Advanced Research Projects Agency. 
 
 This document does not contain technology or technical data controlled under either the U.S. International Traffic in Arms Regulations or the U.S. Export Administration Regulations.
+
+STATEMENT A - Approved for public release. Distribution is unlimited.

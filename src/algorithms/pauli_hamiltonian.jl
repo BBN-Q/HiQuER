@@ -192,10 +192,10 @@ end
 
 function Tableau(s::Stabilizer)
     Np = length(s)
-    Nq = s.nqubits
+    Nq = s.tab.nqubits
     X  = stab_to_gf2(s)[:,1:Nq]
     Z  = stab_to_gf2(s)[:,Nq+1:end]
-    s  = [ph > 0x1 for ph in s.phases]
+    s  = [ph > 0x1 for ph in s.tab.phases]
     return Tableau(X,Z,s)
 end
 

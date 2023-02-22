@@ -1,0 +1,5 @@
+{
+    "scheme": "compact",
+    "p_g": 1e-3,
+    "cycle_time": 1e-6
+}

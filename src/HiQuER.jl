@@ -18,5 +18,6 @@ include("algorithms/pauli_hamiltonian.jl")
 include("algorithms/trotterize.jl")
 
 include("applications/fermihubbard.jl")
+include("applications/plasmaphysics.jl")
 
 end
