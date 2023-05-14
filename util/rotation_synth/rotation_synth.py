@@ -39,6 +39,7 @@ cliffordT = set([
     cirq.T,
     cirq.CNOT])
 cliffordT |= set([cirq.inverse(g) for g in cliffordT])
+cliffordT.add(cirq.MeasurementGate)
 
 def moment_nonCT_gates(moment):
     '''All non-CliffordT gates in a cirq.moment.
@@ -50,7 +51,7 @@ def rebuild_moment_rzs(moment, precision=10):
     subcircuit = cirq.Circuit()
     #for op in tqdm(moment.operations, desc="Operations", leave=False):
     for op in moment.operations:
-        if op.gate in cliffordT:
+        if op.gate in cliffordT or isinstance(op.gate, cirq.MeasurementGate):
             subcircuit.append(op)
         else:
             #print(op.gate)

@@ -49,11 +49,13 @@ function Suzuki_Trotter_circuits_4thorder(pauli_dict, N, Tmax)
     outer_circuit = to_circuit(greedy_partition(outer))
     inner_circuit = to_circuit(greedy_partition(inner))
 
+    outer_meas = to_circuit(greedy_partition(outer), add_measurements=false)
+
     circuit = Circuit()
     push!(circuit, outer_circuit)
     push!(circuit, inner_circuit)
     push!(circuit, inner_circuit)
-    push!(circuit, outer_circuit)
+    push!(circuit, outer_meas)
     
     qasm = to_qasm(circuit)
     

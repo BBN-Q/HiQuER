@@ -11,6 +11,7 @@ include("circuits/circuit_types.jl")
 include("circuits/unitaries.jl")
 
 include("io/qasm_util.jl")
+include("io/qasm_parse.jl")
 include("io/qasm_circuit.jl")
 include("io/circuit_viz.jl")
 

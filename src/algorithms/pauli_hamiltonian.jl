@@ -478,12 +478,12 @@ function phase_gadgets(t::Tableau, θ::Vector{T}; opt=true, opt_cnots=true) wher
             push!(c, CNOT[j,k+j])
          end 
          if row[j] == 1 && isnothing(k)
-            push!(c, Rz(FloatAngle(2*signs[jdx]*θ[jdx]))[j])
+            push!(c, Rz(FloatAngle(signs[jdx]*θ[jdx]))[j]) #check factor of 2 here
             rz_placed = true
          end 
       end 
       if row[M] == 1 && !rz_placed
-         push!(c, Rz(FloatAngle(2*signs[jdx]*θ[jdx]))[M])
+         push!(c, Rz(FloatAngle(signs[jdx]*θ[jdx]))[M])
       end 
       #uncompute 
       for (j,k) in reverse(cnots) 
@@ -515,7 +515,7 @@ function phase_gadgets(t::Tableau, θ::Vector{T}; opt=true, opt_cnots=true) wher
    return c 
 end
 
-function to_circuit(pauli_dict; opt=true, split=false)
+function to_circuit(pauli_dict; opt=true, split=false, add_measurements=false)
     diag_circs = []
     z_circs = []
 
@@ -543,6 +543,11 @@ function to_circuit(pauli_dict; opt=true, split=false)
             push!(final, z)
             push!(final, d')
         end 
+        if add_measurements
+            for q in qubits(final)
+                push!(final, MEAS[q])
+            end
+        end
         return final 
     end
 

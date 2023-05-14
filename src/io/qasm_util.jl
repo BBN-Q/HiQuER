@@ -123,8 +123,14 @@ end
 
 
 function Base.show(io::IO, x::QASMGate) 
-    return print(io, string(x.gate, " ", 
+    if x.gate == :measure
+        return print(io, string(x.gate, " "),
+                                join([string(z) for z in x.targets], ", "),
+                                "-> c[0];")
+    else
+        return print(io, string(x.gate, " ", 
                             join([string(z) for z in x.targets], ", "), ";"))
+    end
 end
 
 struct QASMGateDef
@@ -219,8 +225,7 @@ function Base.show(io::IO, q::QASMListing)
     end
     
     for cr in q.cregisters
-        continue
-        #push!(strs, string(cr))
+        push!(strs, string(cr))
     end
     
     for g in q.instructions

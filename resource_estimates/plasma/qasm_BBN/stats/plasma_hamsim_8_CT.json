@@ -1,0 +1,8 @@
+{
+    "Number of qubits": 8,
+    "Depth": 3395,
+    "Number of gates": 4693,
+    "Number of CNOTs": 144,
+    "T gate count": 1708,
+    "Non-clifford count": 0
+}

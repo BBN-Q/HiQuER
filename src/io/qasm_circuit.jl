@@ -50,6 +50,10 @@ function gate_name(g::ControlledGate)
     throw(ArgumentError("Unknown gate."))
 end
 
+function gate_name(g::Measure)
+    return "measure"
+end
+
 function QASMGateDef(c::Circuit, name::Symbol; prefix="q")
 	 sorted_qb = sort(collect(qubits(c)))
     input_names = [Symbol(string(prefix, idx)) for idx in sorted_qb]
@@ -72,6 +76,12 @@ end
 function to_qasm(c::Circuit; gatedefs=[])
     
     regs = [QASMRegister(:q, length(qubits(c)))]
+    
+    cregs = []
+    if any([gate isa Measure for sl in c.slices for gate in values(sl.gates)])
+        push!(cregs, QASMCRegister(:c, 1))
+    end
+
     gates = Vector{QASMGate}()
     for sl in c.slices
         for (id, g) in sl.gates
@@ -79,7 +89,7 @@ function to_qasm(c::Circuit; gatedefs=[])
             push!(gates, QASMGate(Symbol(gate_name(g)), targets))
         end
     end
-    return QASMListing([], gatedefs, regs, [], gates)
+    return QASMListing([], gatedefs, regs, cregs, gates)
 end  
 
 export QASMGateDef

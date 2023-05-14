@@ -72,6 +72,32 @@ function Base.:(==)(x::Slice, y::Slice)
     return x.gates == y.gates && x.qubits == y.qubits 
 end
 
+####################################################################################################
+# Registers
+#
+
+struct QRegister
+    name :: String 
+    width :: Int 
+    id_map :: Dict{Int, QubitId}
+end
+
+QRegister() = QRegister("", 0, Dict())
+QRegister(name :: String, width :: Int) = QRegister(name, width, 
+                                                    Dict(i => HiQuER.QubitId(0) for i=1:width))
+
+function Base.getindex(R::QRegister, i::Int) 
+    if i > R.width
+        throw(BoundsError(R, i))
+    end
+    return R.id_map[i]
+end 
+
+function map_qubit(R::QRegister, reg_idx::Int, id::QubitId)
+    R.id_map[reg_idx] = id
+end
+
+map_qubit(R::QRegister, reg_idx::Int, id::Int) = map_qubit(R, reg_idx, QubitId(id))
 
 
 ####################################################################################################
@@ -81,11 +107,74 @@ end
 mutable struct Circuit
     slices::Vector{Slice}
     wires::Vector{Int}
+    registers::Vector{QRegister}
 end
 
-qubits(c::Circuit) = Set(flatten([s.qubits for s in c.slices]))
+function qubits(c::Circuit)
+    qbs = Set(flatten([s.qubits for s in c.slices]))
+    for r in c.registers
+        push!(qbs, [idx for qid in values(r.id_map) for idx in qid]...)
+    end
+    return qbs 
+end
 
-Circuit() = Circuit([], [])
+Circuit() = Circuit([], [], [])
+
+function Circuit(qr::QRegister...)
+    @assert length([r.name for r in qr]) == length(Set([r.name for r in qr]))
+    idx = 1 
+    registers = Vector{QRegister}()
+    for reg in qr
+        for j=1:reg.width 
+            reg.id_map[j] = QubitId(idx+j-1)
+        end
+        idx += reg.width 
+        push!(registers, reg)
+    end 
+    return Circuit([], collect(1:idx), registers)
+end
+
+function get_register(c::Circuit, name::String)
+    return filter(x -> x.name == name, c.registers)[1]
+end
+
+function Base.push!(c::Circuit, qr::QRegister)
+    @assert !(qr.name in [x.name for x in c.registers]) "Duplicate register!"
+    qbs = qubits(c)
+    if length(qbs) == 0
+        for j=1:qr.width 
+            qr.id_map[j] = QubitId(j) 
+        end 
+        push!(c.registers, qr)
+        return  
+    else 
+        temp_qbs = qubits(c)
+        for j = 1:qr.width 
+            unused = [x for x in 1:maximum(temp_qbs) if !(x in temp_qbs)]
+            if length(unused) == 0
+                idx = maximum(temp_qbs)+1
+            else
+                idx = unused[1]
+            end 
+            qr.id_map[j] = QubitId(idx) 
+            push!(temp_qbs, idx)
+        end 
+        push!(c.registers, qr)
+        return
+    end    
+end
+
+function Base.push!(c::Circuit, g::T, bits::Vector{Tuple{String, Int}}) where T<:AbstractGate
+    push!(c, Base.getindex(g, [get_register(c, name)[b] for (name, b) in bits]...))
+end
+
+function Base.push!(c::Circuit, g::Vector{T}, bits::Vector{Tuple{String, Int}}) where T<:AbstractGate
+    regs = [get_register(c, name)[b] for (name, b) in bits]
+    for gate in g 
+        push!(c, Base.getindex(gate, regs...))
+    end 
+end
+
 
 function available(s::Slice, qb_idx::QubitId)
     return !any(id in s.qubits for id in qb_idx)
@@ -239,6 +328,12 @@ function renumber_slices!(c::Circuit)
     nothing 
 end
 
+####################################################################################################
+# Functionality to do gate substitutions
+#
+
+
+export QRegister
 export Circuit
 export Slice
 export renumber_slices!

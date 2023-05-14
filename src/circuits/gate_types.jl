@@ -16,6 +16,7 @@ limitations under the License.
 
 using QuantumClifford
 using LaTeXStrings
+using Base.Iterators: flatten
 
 abstract type AbstractGate end
 
@@ -121,7 +122,7 @@ struct ControlledGate <: AbstractGate
     tgt_pauli::PauliOperator
 end
 
-ControlledGate(ctrl::PauliOperator, tgt::PauliOperator) where T<:AbstractAngle = ControlledGate([ctrl], tgt)
+ControlledGate(ctrl::PauliOperator, tgt::PauliOperator) = ControlledGate([ctrl], tgt)
 
 ##TODO:FIXME! 
 ##Only true for CNOT...
@@ -159,6 +160,8 @@ Measure() = Measure(Z)
 const MEAS = Measure(Z)
 
 Base.getindex(A::G, i::Int...) where G<:AbstractGate = QubitId(i)=>A
+Base.getindex(A::G, i::QubitId...) where G<:AbstractGate = QubitId(flatten(i)...) => A
+
 
 export Gate, PauliGate, ControlledGate, Measure 
 export H, T, S, Rx, Rz, Ry, X180, Y180, Z180, X90, Y90, Z90, CNOT, MEAS
